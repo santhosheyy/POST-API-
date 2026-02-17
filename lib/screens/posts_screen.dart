@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../models/post.dart';
@@ -90,132 +92,76 @@ class _PostsScreenState extends State<PostsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: Stack(
         children: [
-          const _Backdrop(),
           SafeArea(
-            child: _isInitialLoading
-                ? const _LoadingState()
-                : _hasError && _posts.isEmpty
-                    ? _ErrorState(onRetry: _loadFirstPage)
-                    : _posts.isEmpty
-                        ? _EmptyState(onRetry: _loadFirstPage)
-                        : RefreshIndicator(
-                            color: scheme.primary,
-                            onRefresh: _loadFirstPage,
-                            child: NotificationListener<ScrollNotification>(
-                              onNotification: (notification) {
-                                if (notification.metrics.pixels >=
-                                    notification.metrics.maxScrollExtent * 0.7) {
-                                  _loadMore();
-                                }
-                                return false;
-                              },
-                              child: Scrollbar(
-                                controller: _scrollController,
-                                thumbVisibility: true,
-                                interactive: true,
-                                thickness: 6,
-                                radius: const Radius.circular(12),
-                                child: ListView.builder(
-                                  controller: _scrollController,
-                                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-                                  itemCount: _posts.length + 2,
-                                  itemBuilder: (context, index) {
-                                    if (index == 0) {
-                                      return _Header(loaded: _posts.length, total: _total);
-                                    }
-
-                                    final postIndex = index - 1;
-                                    if (postIndex < _posts.length) {
-                                      final post = _posts[postIndex];
-                                      return Padding(
-                                        padding: const EdgeInsets.only(bottom: 16),
-                                        child: PostCard(
-                                          post: post,
-                                          onTap: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    PostDetailScreen(post: post),
-                                              ),
+            child: Column(
+              children: [
+                _Header(loaded: _posts.length, total: _total),
+                Expanded(
+                  child: _isInitialLoading
+                      ? const _LoadingState()
+                      : _hasError && _posts.isEmpty
+                          ? _ErrorState(onRetry: _loadFirstPage)
+                          : _posts.isEmpty
+                              ? _EmptyState(onRetry: _loadFirstPage)
+                              : RefreshIndicator(
+                                  color: scheme.primary,
+                                  onRefresh: _loadFirstPage,
+                                  child: NotificationListener<ScrollNotification>(
+                                    onNotification: (notification) {
+                                      if (notification.metrics.pixels >=
+                                          notification.metrics.maxScrollExtent * 0.7) {
+                                        _loadMore();
+                                      }
+                                      return false;
+                                    },
+                                    child: Scrollbar(
+                                      controller: _scrollController,
+                                      thumbVisibility: true,
+                                      interactive: true,
+                                      thickness: 5,
+                                      radius: const Radius.circular(12),
+                                      child: ListView.builder(
+                                        controller: _scrollController,
+                                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 140),
+                                        itemCount: _posts.length + 1,
+                                        itemBuilder: (context, index) {
+                                          if (index < _posts.length) {
+                                            final post = _posts[index];
+                                            return PostCard(
+                                              post: post,
+                                              onTap: () {
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        PostDetailScreen(post: post),
+                                                  ),
+                                                );
+                                              },
                                             );
-                                          },
-                                        ),
-                                      );
-                                    }
+                                          }
 
-                                    return _LoadMoreSection(
-                                      hasMore: _hasMore,
-                                      isLoading: _isLoadingMore,
-                                      onLoadMore: _loadMore,
-                                    );
-                                  },
+                                          return _LoadMoreSection(
+                                            hasMore: _hasMore,
+                                            isLoading: _isLoadingMore,
+                                            onLoadMore: _loadMore,
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ),
+                ),
+              ],
+            ),
           ),
+          const _DotNav(),
+          const _HomeIndicator(),
         ],
-      ),
-    );
-  }
-}
-
-class _Backdrop extends StatelessWidget {
-  const _Backdrop();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.primaryContainer.withOpacity(0.4),
-            scheme.surface,
-            scheme.secondaryContainer.withOpacity(0.35),
-          ],
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: -80,
-            left: -40,
-            child: _GlowBlob(color: scheme.secondary.withOpacity(0.25)),
-          ),
-          Positioned(
-            bottom: -120,
-            right: -60,
-            child: _GlowBlob(color: scheme.primary.withOpacity(0.2)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GlowBlob extends StatelessWidget {
-  const _GlowBlob({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 220,
-      height: 220,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
       ),
     );
   }
@@ -230,43 +176,40 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 18, 24, 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(bottom: BorderSide(color: theme.dividerColor)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Daily Poststream',
-            style: theme.textTheme.displaySmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: scheme.onSurface,
-              height: 1.1,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'All posts from the DummyJSON feed, styled for focus and calm.',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: scheme.onSurface.withOpacity(0.7),
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: scheme.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              total > 0 ? '$loaded of $total posts loaded' : '$loaded posts loaded',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: scheme.primary,
-                fontWeight: FontWeight.w600,
+          Row(
+            children: [
+              Expanded(
+                child: Text('The Journal', style: theme.textTheme.displaySmall),
               ),
-            ),
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.search_rounded),
+              ),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: theme.dividerColor),
+                ),
+                child: const Icon(Icons.person, size: 16),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            total > 0 ? '$loaded of $total posts loaded' : '$loaded posts loaded',
+            style: theme.textTheme.labelLarge,
           ),
         ],
       ),
@@ -292,8 +235,11 @@ class _LoadMoreSection extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 24),
         child: Center(
           child: Text(
-            'You\'re all caught up.',
-            style: Theme.of(context).textTheme.bodyMedium,
+            'END OF LIST',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  letterSpacing: 2.8,
+                  color: Colors.grey.shade300,
+                ),
           ),
         ),
       );
@@ -319,21 +265,7 @@ class _LoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(
-            'Loading posts...',
-            style: theme.textTheme.bodyMedium,
-          ),
-        ],
-      ),
-    );
+    return const Center(child: CircularProgressIndicator());
   }
 }
 
@@ -344,35 +276,21 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.wifi_off_rounded, size: 42, color: theme.colorScheme.primary),
-            const SizedBox(height: 12),
-            Text(
-              'We could not reach the feed.',
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Check your connection and try again.',
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Try again'),
-            ),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.wifi_off_rounded, size: 36),
+          const SizedBox(height: 12),
+          Text('We could not reach the feed.',
+              style: Theme.of(context).textTheme.bodyLarge),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Try again'),
+          ),
+        ],
       ),
     );
   }
@@ -385,34 +303,97 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.chat_bubble_outline, size: 42, color: theme.colorScheme.primary),
-            const SizedBox(height: 12),
-            Text(
-              'No posts right now.',
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.chat_bubble_outline, size: 36),
+          const SizedBox(height: 12),
+          Text('No posts right now.',
+              style: Theme.of(context).textTheme.bodyLarge),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Reload feed'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DotNav extends StatelessWidget {
+  const _DotNav();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      bottom: 44,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        child: Center(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _dot(active: true),
+                    _dot(),
+                    _dot(),
+                    _dot(),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Pull to refresh or try again later.',
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _dot({bool active = false}) {
+    return Container(
+      width: 6,
+      height: 6,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: active ? Colors.black : Colors.grey.shade300,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+class _HomeIndicator extends StatelessWidget {
+  const _HomeIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      bottom: 10,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        child: Center(
+          child: Container(
+            width: 120,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(999),
             ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Reload feed'),
-            ),
-          ],
+          ),
         ),
       ),
     );
