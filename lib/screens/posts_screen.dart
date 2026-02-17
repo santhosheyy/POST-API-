@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../models/post.dart';
-import '../screens/post_detail_screen.dart';
 import '../services/post_api.dart';
 import '../widgets/post_card.dart';
 
@@ -132,17 +131,7 @@ class _PostsScreenState extends State<PostsScreen> {
                                         itemBuilder: (context, index) {
                                           if (index < _posts.length) {
                                             final post = _posts[index];
-                                            return PostCard(
-                                              post: post,
-                                              onTap: () {
-                                                Navigator.of(context).push(
-                                                  MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        PostDetailScreen(post: post),
-                                                  ),
-                                                );
-                                              },
-                                            );
+                                            return PostCard(post: post);
                                           }
 
                                           return _LoadMoreSection(
@@ -189,20 +178,7 @@ class _Header extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('The Journal', style: theme.textTheme.displaySmall),
-              ),
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.search_rounded),
-              ),
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: theme.dividerColor),
-                ),
-                child: const Icon(Icons.person, size: 16),
+                child: Text('POST API DEMO', style: theme.textTheme.displaySmall),
               ),
             ],
           ),
@@ -341,7 +317,7 @@ class _DotNav extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(color: Colors.grey.shade200),
                 ),
