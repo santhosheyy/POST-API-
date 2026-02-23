@@ -43,7 +43,6 @@ class PostCard extends StatelessWidget {
     );
   }
 
-
   int _readTime(String body) {
     final words = body.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
     final minutes = (words / 180).ceil();
@@ -58,15 +57,7 @@ class _EditorialLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 1,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.transparent,
-            Colors.grey.shade300,
-            Colors.transparent,
-          ],
-        ),
-      ),
+      color: Colors.black,
     );
   }
 }

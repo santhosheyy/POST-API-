@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../models/post.dart';
@@ -148,7 +146,6 @@ class _PostsScreenState extends State<PostsScreen> {
               ],
             ),
           ),
-          const _DotNav(),
           const _HomeIndicator(),
         ],
       ),
@@ -294,58 +291,6 @@ class _EmptyState extends StatelessWidget {
             label: const Text('Reload feed'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _DotNav extends StatelessWidget {
-  const _DotNav();
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      bottom: 44,
-      left: 0,
-      right: 0,
-      child: IgnorePointer(
-        child: Center(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _dot(active: true),
-                    _dot(),
-                    _dot(),
-                    _dot(),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _dot({bool active = false}) {
-    return Container(
-      width: 6,
-      height: 6,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        color: active ? Colors.black : Colors.grey.shade300,
-        shape: BoxShape.circle,
       ),
     );
   }
