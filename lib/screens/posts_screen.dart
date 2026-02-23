@@ -1,4 +1,7 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../models/post.dart';
 import '../services/post_api.dart';
@@ -94,6 +97,7 @@ class _PostsScreenState extends State<PostsScreen> {
     return Scaffold(
       body: Stack(
         children: [
+          const _Backdrop(),
           SafeArea(
             child: Column(
               children: [
@@ -106,7 +110,7 @@ class _PostsScreenState extends State<PostsScreen> {
                           : _posts.isEmpty
                               ? _EmptyState(onRetry: _loadFirstPage)
                               : RefreshIndicator(
-                                  color: scheme.primary,
+                                  color: scheme.secondary,
                                   onRefresh: _loadFirstPage,
                                   child: NotificationListener<ScrollNotification>(
                                     onNotification: (notification) {
@@ -124,12 +128,20 @@ class _PostsScreenState extends State<PostsScreen> {
                                       radius: const Radius.circular(12),
                                       child: ListView.builder(
                                         controller: _scrollController,
-                                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 140),
+                                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
                                         itemCount: _posts.length + 1,
                                         itemBuilder: (context, index) {
                                           if (index < _posts.length) {
                                             final post = _posts[index];
-                                            return PostCard(post: post);
+                                            return PostCard(
+                                              post: post,
+                                              onTap: () {
+                                                context.push(
+                                                  '/posts/${post.id}',
+                                                  extra: post,
+                                                );
+                                              },
+                                            );
                                           }
 
                                           return _LoadMoreSection(
@@ -153,6 +165,68 @@ class _PostsScreenState extends State<PostsScreen> {
   }
 }
 
+class _Backdrop extends StatelessWidget {
+  const _Backdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFFF6F1E8),
+            scheme.surface,
+            const Color(0xFFECE3D7),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -130,
+            left: -80,
+            child: _Blob(
+              size: 320,
+              color: scheme.primaryContainer.withValues(alpha: 0.45),
+            ),
+          ),
+          Positioned(
+            bottom: -170,
+            right: -120,
+            child: _Blob(
+              size: 360,
+              color: scheme.secondaryContainer.withValues(alpha: 0.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Blob extends StatelessWidget {
+  const _Blob({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
 class _Header extends StatelessWidget {
   const _Header({required this.loaded, required this.total});
 
@@ -163,28 +237,33 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 18, 24, 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(bottom: BorderSide(color: theme.dividerColor)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text('POST API DEMO', style: theme.textTheme.displaySmall),
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface.withValues(alpha: 0.7),
+              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.6)),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('The Journal', style: theme.textTheme.displaySmall),
+                const SizedBox(height: 10),
+                Text(
+                  total > 0 ? '$loaded of $total posts loaded' : '$loaded posts loaded',
+                  style: theme.textTheme.labelLarge,
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            total > 0 ? '$loaded of $total posts loaded' : '$loaded posts loaded',
-            style: theme.textTheme.labelLarge,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -205,13 +284,13 @@ class _LoadMoreSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!hasMore) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24),
+        padding: const EdgeInsets.symmetric(vertical: 28),
         child: Center(
           child: Text(
             'END OF LIST',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  letterSpacing: 2.8,
-                  color: Colors.grey.shade300,
+                  letterSpacing: 2.6,
+                  color: Colors.black54,
                 ),
           ),
         ),
@@ -219,11 +298,11 @@ class _LoadMoreSection extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.only(top: 6, bottom: 18),
       child: Center(
         child: isLoading
             ? const CircularProgressIndicator()
-            : OutlinedButton.icon(
+            : FilledButton.tonalIcon(
                 onPressed: onLoadMore,
                 icon: const Icon(Icons.expand_more_rounded),
                 label: const Text('Load more'),
@@ -238,7 +317,18 @@ class _LoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: CircularProgressIndicator());
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 12),
+          Text('Loading posts...', style: theme.textTheme.bodyMedium),
+        ],
+      ),
+    );
   }
 }
 
@@ -250,20 +340,23 @@ class _ErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.wifi_off_rounded, size: 36),
-          const SizedBox(height: 12),
-          Text('We could not reach the feed.',
-              style: Theme.of(context).textTheme.bodyLarge),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Try again'),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.wifi_off_rounded, size: 36),
+            const SizedBox(height: 12),
+            Text('We could not reach the feed.',
+                style: Theme.of(context).textTheme.bodyLarge),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Try again'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -277,20 +370,22 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.chat_bubble_outline, size: 36),
-          const SizedBox(height: 12),
-          Text('No posts right now.',
-              style: Theme.of(context).textTheme.bodyLarge),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Reload feed'),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.chat_bubble_outline, size: 36),
+            const SizedBox(height: 12),
+            Text('No posts right now.', style: Theme.of(context).textTheme.bodyLarge),
+            const SizedBox(height: 14),
+            FilledButton.tonalIcon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Reload feed'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -311,7 +406,7 @@ class _HomeIndicator extends StatelessWidget {
             width: 120,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: Colors.black12,
               borderRadius: BorderRadius.circular(999),
             ),
           ),

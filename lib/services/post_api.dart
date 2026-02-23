@@ -49,6 +49,21 @@ class PostApi {
       skip: decoded['skip'] is int ? decoded['skip'] as int : skip,
     );
   }
+
+  static Future<Post> fetchPostById(int postId) async {
+    final uri = Uri.parse('$_baseUrl/$postId');
+    final response = await http.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load post #$postId (${response.statusCode})');
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('Unexpected response shape');
+    }
+
+    return Post.fromJson(decoded);
+  }
 }
 
 class PostPage {
