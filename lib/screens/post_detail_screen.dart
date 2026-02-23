@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/post.dart';
 
@@ -75,6 +76,20 @@ class PostDetailScreen extends StatelessWidget {
                       label: post.dislikes,
                       color: scheme.secondary,
                       background: scheme.secondaryContainer,
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton.tonalIcon(
+                      onPressed: () async {
+                        final content = '${post.title}\n\n${post.body}';
+                        await Clipboard.setData(ClipboardData(text: content));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Post copied')),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.copy_rounded),
+                      label: const Text('Copy'),
                     ),
                   ],
                 ),
