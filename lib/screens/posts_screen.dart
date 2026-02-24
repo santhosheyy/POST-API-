@@ -1,14 +1,15 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/post.dart';
 import '../services/post_api.dart';
 import '../widgets/post_card.dart';
 
 enum _SortMode { newest, oldest, mostLiked }
+enum _ReadFilter { all, unread, read }
 
 class PostsScreen extends StatefulWidget {
   const PostsScreen({super.key});
@@ -19,12 +20,13 @@ class PostsScreen extends StatefulWidget {
 
 class _PostsScreenState extends State<PostsScreen> {
   static const int _pageSize = 20;
-  static const String _favoritesStorageKey = 'favorite_post_ids';
 
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   final List<Post> _posts = [];
   final Set<int> _favoritePostIds = <int>{};
+  final Set<int> _readPostIds = <int>{};
+  final Set<String> _selectedTags = <String>{};
 
   int _total = 0;
   int _skip = 0;
@@ -32,29 +34,79 @@ class _PostsScreenState extends State<PostsScreen> {
   bool _isLoadingMore = false;
   bool _hasError = false;
   bool _showFavoritesOnly = false;
+  bool _showScrollToTop = false;
+  double _scrollProgress = 0;
   _SortMode _sortMode = _SortMode.newest;
+  _ReadFilter _readFilter = _ReadFilter.all;
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _loadFavorites();
+    _scrollController.addListener(_onScroll);
     _loadFirstPage();
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final show = position.pixels > 280;
+    final max = position.maxScrollExtent;
+    final progress = max <= 0 ? 0.0 : (position.pixels / max).clamp(0.0, 1.0);
+
+    if (show != _showScrollToTop || (progress - _scrollProgress).abs() > 0.02) {
+      setState(() {
+        _showScrollToTop = show;
+        _scrollProgress = progress;
+      });
+    }
+  }
+
   bool get _hasMore => _posts.length < _total;
+
+  List<String> get _availableTags {
+    final frequencies = <String, int>{};
+
+    for (final post in _posts) {
+      for (final tag in post.tags) {
+        frequencies[tag] = (frequencies[tag] ?? 0) + 1;
+      }
+    }
+
+    final sorted = frequencies.entries.toList()
+      ..sort((a, b) {
+        final byCount = b.value.compareTo(a.value);
+        if (byCount != 0) return byCount;
+        return a.key.compareTo(b.key);
+      });
+
+    return sorted.map((entry) => entry.key).take(12).toList();
+  }
 
   List<Post> _visiblePosts() {
     final query = _searchQuery.toLowerCase();
     final filtered = _posts.where((post) {
       if (_showFavoritesOnly && !_favoritePostIds.contains(post.id)) {
+        return false;
+      }
+
+      if (_readFilter == _ReadFilter.read && !_readPostIds.contains(post.id)) {
+        return false;
+      }
+
+      if (_readFilter == _ReadFilter.unread && _readPostIds.contains(post.id)) {
+        return false;
+      }
+
+      if (_selectedTags.isNotEmpty && !post.tags.any(_selectedTags.contains)) {
         return false;
       }
 
@@ -132,24 +184,6 @@ class _PostsScreenState extends State<PostsScreen> {
     }
   }
 
-  Future<void> _loadFavorites() async {
-    final prefs = await SharedPreferences.getInstance();
-    final storedIds = prefs.getStringList(_favoritesStorageKey) ?? <String>[];
-    final parsedIds = storedIds.map(int.tryParse).whereType<int>().toSet();
-    if (!mounted) return;
-    setState(() {
-      _favoritePostIds
-        ..clear()
-        ..addAll(parsedIds);
-    });
-  }
-
-  Future<void> _persistFavorites() async {
-    final prefs = await SharedPreferences.getInstance();
-    final serialized = _favoritePostIds.map((id) => id.toString()).toList();
-    await prefs.setStringList(_favoritesStorageKey, serialized);
-  }
-
   void _toggleFavorite(int postId) {
     setState(() {
       if (_favoritePostIds.contains(postId)) {
@@ -158,16 +192,50 @@ class _PostsScreenState extends State<PostsScreen> {
         _favoritePostIds.add(postId);
       }
     });
-    _persistFavorites();
+  }
+
+  void _markAsRead(int postId) {
+    if (_readPostIds.contains(postId)) return;
+    setState(() {
+      _readPostIds.add(postId);
+    });
+  }
+
+  void _toggleTag(String tag) {
+    setState(() {
+      if (_selectedTags.contains(tag)) {
+        _selectedTags.remove(tag);
+      } else {
+        _selectedTags.add(tag);
+      }
+    });
   }
 
   void _clearFilters() {
     setState(() {
       _showFavoritesOnly = false;
       _sortMode = _SortMode.newest;
+      _readFilter = _ReadFilter.all;
       _searchQuery = '';
+      _selectedTags.clear();
       _searchController.clear();
     });
+  }
+
+  void _openRandomPost(List<Post> visiblePosts) {
+    if (visiblePosts.isEmpty) return;
+    final randomPost = visiblePosts[Random().nextInt(visiblePosts.length)];
+    _markAsRead(randomPost.id);
+    context.push('/posts/${randomPost.id}', extra: randomPost);
+  }
+
+  Future<void> _scrollToTop() async {
+    if (!_scrollController.hasClients) return;
+    await _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -185,6 +253,9 @@ class _PostsScreenState extends State<PostsScreen> {
                 _Header(
                   loaded: _posts.length,
                   total: _total,
+                  visible: visiblePosts.length,
+                  favoriteCount: _favoritePostIds.length,
+                  readCount: _readPostIds.length,
                   controller: _searchController,
                   searchQuery: _searchQuery,
                   onSearchChanged: (value) => setState(() => _searchQuery = value.trim()),
@@ -196,6 +267,13 @@ class _PostsScreenState extends State<PostsScreen> {
                   onToggleFavoritesOnly: (value) => setState(() => _showFavoritesOnly = value),
                   sortMode: _sortMode,
                   onSortChanged: (value) => setState(() => _sortMode = value),
+                  readFilter: _readFilter,
+                  onReadFilterChanged: (value) => setState(() => _readFilter = value),
+                  availableTags: _availableTags,
+                  selectedTags: _selectedTags,
+                  onTagToggled: _toggleTag,
+                  onClearFilters: _clearFilters,
+                  scrollProgress: _scrollProgress,
                 ),
                 Expanded(
                   child: _isInitialLoading
@@ -225,6 +303,9 @@ class _PostsScreenState extends State<PostsScreen> {
                                           radius: const Radius.circular(12),
                                           child: ListView.builder(
                                             controller: _scrollController,
+                                            physics: const AlwaysScrollableScrollPhysics(
+                                              parent: BouncingScrollPhysics(),
+                                            ),
                                             padding: const EdgeInsets.fromLTRB(20, 10, 20, 120),
                                             itemCount: visiblePosts.length + 1,
                                             itemBuilder: (context, index) {
@@ -233,8 +314,10 @@ class _PostsScreenState extends State<PostsScreen> {
                                                 return PostCard(
                                                   post: post,
                                                   isFavorite: _favoritePostIds.contains(post.id),
+                                                  isRead: _readPostIds.contains(post.id),
                                                   onToggleFavorite: () => _toggleFavorite(post.id),
                                                   onTap: () {
+                                                    _markAsRead(post.id);
                                                     context.push(
                                                       '/posts/${post.id}',
                                                       extra: post,
@@ -257,6 +340,12 @@ class _PostsScreenState extends State<PostsScreen> {
               ],
             ),
           ),
+          if (visiblePosts.isNotEmpty)
+            _QuickActions(
+              showScrollToTop: _showScrollToTop,
+              onRandom: () => _openRandomPost(visiblePosts),
+              onScrollToTop: _scrollToTop,
+            ),
           const _HomeIndicator(),
         ],
       ),
@@ -330,6 +419,9 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.loaded,
     required this.total,
+    required this.visible,
+    required this.favoriteCount,
+    required this.readCount,
     required this.controller,
     required this.searchQuery,
     required this.onSearchChanged,
@@ -338,10 +430,20 @@ class _Header extends StatelessWidget {
     required this.onToggleFavoritesOnly,
     required this.sortMode,
     required this.onSortChanged,
+    required this.readFilter,
+    required this.onReadFilterChanged,
+    required this.availableTags,
+    required this.selectedTags,
+    required this.onTagToggled,
+    required this.onClearFilters,
+    required this.scrollProgress,
   });
 
   final int loaded;
   final int total;
+  final int visible;
+  final int favoriteCount;
+  final int readCount;
   final TextEditingController controller;
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
@@ -350,6 +452,13 @@ class _Header extends StatelessWidget {
   final ValueChanged<bool> onToggleFavoritesOnly;
   final _SortMode sortMode;
   final ValueChanged<_SortMode> onSortChanged;
+  final _ReadFilter readFilter;
+  final ValueChanged<_ReadFilter> onReadFilterChanged;
+  final List<String> availableTags;
+  final Set<String> selectedTags;
+  final ValueChanged<String> onTagToggled;
+  final VoidCallback onClearFilters;
+  final double scrollProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -378,7 +487,28 @@ class _Header extends StatelessWidget {
                   total > 0 ? '$loaded of $total posts loaded' : '$loaded posts loaded',
                   style: theme.textTheme.labelLarge,
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: total == 0 ? 0 : loaded / total,
+                    minHeight: 6,
+                    backgroundColor: Colors.black.withValues(alpha: 0.08),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _MetricPill(label: 'Visible', value: visible),
+                    const SizedBox(width: 8),
+                    _MetricPill(label: 'Favorites', value: favoriteCount),
+                    const SizedBox(width: 8),
+                    _MetricPill(label: 'Read', value: readCount),
+                    const Spacer(),
+                    
+                  ],
+                ),
+                const SizedBox(height: 10),
                 TextField(
                   controller: controller,
                   onChanged: onSearchChanged,
@@ -420,6 +550,21 @@ class _Header extends StatelessWidget {
                       ),
                     ),
                     ChoiceChip(
+                      label: const Text('All'),
+                      selected: readFilter == _ReadFilter.all,
+                      onSelected: (_) => onReadFilterChanged(_ReadFilter.all),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Unread'),
+                      selected: readFilter == _ReadFilter.unread,
+                      onSelected: (_) => onReadFilterChanged(_ReadFilter.unread),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Read'),
+                      selected: readFilter == _ReadFilter.read,
+                      onSelected: (_) => onReadFilterChanged(_ReadFilter.read),
+                    ),
+                    ChoiceChip(
                       label: const Text('Newest'),
                       selected: sortMode == _SortMode.newest,
                       onSelected: (_) => onSortChanged(_SortMode.newest),
@@ -436,11 +581,34 @@ class _Header extends StatelessWidget {
                     ),
                   ],
                 ),
+                
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MetricPill extends StatelessWidget {
+  const _MetricPill({required this.label, required this.value});
+
+  final String label;
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: scheme.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.black12),
+      ),
+      child: Text('$label: $value', style: Theme.of(context).textTheme.labelLarge),
     );
   }
 }
@@ -591,6 +759,48 @@ class _NoResultsState extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({
+    required this.showScrollToTop,
+    required this.onRandom,
+    required this.onScrollToTop,
+  });
+
+  final bool showScrollToTop;
+  final VoidCallback onRandom;
+  final VoidCallback onScrollToTop;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      right: 18,
+      bottom: 86,
+      child: Column(
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'random_post',
+            onPressed: onRandom,
+            child: const Icon(Icons.casino_rounded),
+          ),
+          const SizedBox(height: 10),
+          AnimatedScale(
+            duration: const Duration(milliseconds: 180),
+            scale: showScrollToTop ? 1 : 0,
+            child: IgnorePointer(
+              ignoring: !showScrollToTop,
+              child: FloatingActionButton.small(
+                heroTag: 'scroll_top',
+                onPressed: onScrollToTop,
+                child: const Icon(Icons.vertical_align_top_rounded),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
