@@ -256,6 +256,7 @@ class _PostsScreenState extends State<PostsScreen> {
                   visible: visiblePosts.length,
                   favoriteCount: _favoritePostIds.length,
                   readCount: _readPostIds.length,
+                  onAboutTap: () => context.push('/about'),
                   controller: _searchController,
                   searchQuery: _searchQuery,
                   onSearchChanged: (value) => setState(() => _searchQuery = value.trim()),
@@ -422,6 +423,7 @@ class _Header extends StatelessWidget {
     required this.visible,
     required this.favoriteCount,
     required this.readCount,
+    required this.onAboutTap,
     required this.controller,
     required this.searchQuery,
     required this.onSearchChanged,
@@ -444,6 +446,7 @@ class _Header extends StatelessWidget {
   final int visible;
   final int favoriteCount;
   final int readCount;
+  final VoidCallback onAboutTap;
   final TextEditingController controller;
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
@@ -481,7 +484,18 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('The Journal', style: theme.textTheme.displaySmall),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('The Journal', style: theme.textTheme.displaySmall),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: onAboutTap,
+                      label: const Text('About'),
+                      icon: const Icon(Icons.info_outline_rounded, size: 18),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 10),
                 Text(
                   total > 0 ? '$loaded of $total posts loaded' : '$loaded posts loaded',
@@ -496,18 +510,7 @@ class _Header extends StatelessWidget {
                     backgroundColor: Colors.black.withValues(alpha: 0.08),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _MetricPill(label: 'Visible', value: visible),
-                    const SizedBox(width: 8),
-                    _MetricPill(label: 'Favorites', value: favoriteCount),
-                    const SizedBox(width: 8),
-                    _MetricPill(label: 'Read', value: readCount),
-                    const Spacer(),
-                    
-                  ],
-                ),
+                
                 const SizedBox(height: 10),
                 TextField(
                   controller: controller,
@@ -534,7 +537,7 @@ class _Header extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Wrap(
+                /*Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
@@ -580,8 +583,13 @@ class _Header extends StatelessWidget {
                       onSelected: (_) => onSortChanged(_SortMode.mostLiked),
                     ),
                   ],
-                ),
+                ),*/
                 
+                /*const SizedBox(height: 10),
+                Text(
+                  'Scroll ${(scrollProgress * 100).round()}%',
+                  style: theme.textTheme.labelLarge,
+                ),*/
               ],
             ),
           ),

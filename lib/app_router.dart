@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'models/post.dart';
-import 'screens/about_screen.dart';
 import 'screens/post_by_id_screen.dart';
 import 'screens/post_detail_screen.dart';
 import 'screens/posts_screen.dart';
@@ -27,13 +26,7 @@ final GoRouter appRouter = GoRouter(
         return const PostsScreen();
       },
     ),
-    GoRoute(
-      path: '/about',
-      name: 'about',
-      builder: (BuildContext context, GoRouterState state) {
-        return const AboutScreen();
-      },
-    ),
+    
     GoRoute(
       path: '/posts/:postId',
       name: 'post-details',
