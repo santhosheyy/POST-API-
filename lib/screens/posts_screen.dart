@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -292,7 +293,17 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('The Journal', style: theme.textTheme.displaySmall),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('The Journal', style: theme.textTheme.displaySmall),
+                    IconButton(
+                      icon: const Icon(Icons.logout_rounded),
+                      onPressed: () => FirebaseAuth.instance.signOut(),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 10),
                 Text(
                   total > 0 ? '$loaded of $total posts loaded' : '$loaded posts loaded',
