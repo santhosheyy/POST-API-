@@ -5,12 +5,16 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'app_router.dart';
 import 'firebase_options.dart';
+import 'services/push_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  await PushNotificationService().initialize();
+  
   runApp(const JournalApp());
 }
 
