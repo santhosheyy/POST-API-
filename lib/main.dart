@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import 'package:firebase_core/firebase_core.dart';
 
 import 'app_router.dart';
@@ -12,9 +11,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
   await PushNotificationService().initialize();
-  
   runApp(const JournalApp());
 }
 

@@ -2,68 +2,60 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // If you're going to use other Firebase services in the background, such as Firestore,
-  // make sure you call `initializeApp` before using other Firebase services.
   await Firebase.initializeApp();
-  debugPrint("Handling a background message: ${message.messageId}");
+  debugPrint('Handling a background message: ${message.messageId}');
 }
 
 class PushNotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
+  // Defined at class level so it can be referenced anywhere in this service
+  static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
+    'high_importance_channel',
+    'High Importance Notifications',
+    description: 'This channel is used for important notifications.',
+    importance: Importance.max,
+  );
+
   Future<void> initialize() async {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-    NotificationSettings settings = await _fcm.requestPermission(
+    // Request permission from the user (required on iOS, Android 13+)
+    final NotificationSettings settings = await _fcm.requestPermission(
       alert: true,
-      announcement: false,
       badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
       sound: true,
     );
+    debugPrint('Notification permission status: ${settings.authorizationStatus}');
 
-    debugPrint('User granted permission: ${settings.authorizationStatus}');
-
-    
+    // Fetch the FCM token uniquely identifying this device
     try {
-      String? token = await _fcm.getToken();
-      debugPrint("FCM Token: $token");
+      final String? token = await _fcm.getToken();
+      debugPrint('FCM Token: $token');
     } catch (e) {
-      debugPrint("Error getting FCM Token: $e");
+      debugPrint('Failed to get FCM Token: $e');
     }
 
-    // Setup local notifications for Android
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings();
+    // Initialize the local notifications plugin for both Android and iOS
     const InitializationSettings initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      iOS: DarwinInitializationSettings(),
     );
     await _localNotifications.initialize(settings: initSettings);
 
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'high_importance_channel',
-      'High Importance Notifications',
-      description: 'This channel is used for important notifications.',
-      importance: Importance.max,
-    );
-    
+    // Register the high-importance channel on Android (8.0+)
     await _localNotifications
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+        ?.createNotificationChannel(_channel);
 
-    
+    // Show a local banner when a notification arrives while the app is open
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('Got a message whilst in the foreground!');
-      debugPrint('Message data: ${message.data}');
-
-      RemoteNotification? notification = message.notification;
-      AndroidNotification? android = message.notification?.android;
+      final notification = message.notification;
+      final android = message.notification?.android;
 
       if (notification != null && android != null) {
         _localNotifications.show(
@@ -72,15 +64,13 @@ class PushNotificationService {
           body: notification.body,
           notificationDetails: NotificationDetails(
             android: AndroidNotificationDetails(
-              channel.id,
-              channel.name,
-              channelDescription: channel.description,
+              _channel.id,
+              _channel.name,
+              channelDescription: _channel.description,
               icon: '@mipmap/ic_launcher',
             ),
           ),
         );
-      } else if (notification != null) {
-        debugPrint('Message also contained a notification: ${notification.title}');
       }
     });
   }
