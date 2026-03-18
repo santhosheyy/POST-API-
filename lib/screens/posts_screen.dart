@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../models/post.dart';
 import '../services/post_api.dart';
 import '../widgets/post_card.dart';
+import 'package:my_simple_package/my_simple_package.dart';
 
 class PostsScreen extends StatefulWidget {
   const PostsScreen({super.key});
@@ -33,6 +34,14 @@ class _PostsScreenState extends State<PostsScreen> {
   void initState() {
     super.initState();
     _loadFirstPage();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WelcomeDialog.show(
+        context,
+        title: 'Welcome!',
+        message: 'Welcome to The Journal App 📖\nHere are the latest posts.',
+        buttonText: 'Let\'s Go!',
+      );
+    });
   }
 
   @override
